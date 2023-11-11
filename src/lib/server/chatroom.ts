@@ -1,6 +1,5 @@
 type Client = {
-  conn: WritableStreamDefaultWriter;
-  last_message: Date | null;
+  controller: ReadableStreamDefaultController;
 };
 
 class Chatroom {
@@ -8,14 +7,21 @@ class Chatroom {
 
   constructor() { }
 
-  join = (address: string, conn: WritableStreamDefaultWriter) => {
-    this.clients.set(address, { conn, last_message: null });
+  join = (address: string, controller: ReadableStreamDefaultController) => {
+    this.clients.set(address, { controller });
+    controller.enqueue("Welcome to the chatroom!");
+    return new Promise((res) => {
+      const client = this.clients.get(address);
+      if (!client) {
+        res("client disconnected");
+      }
+    }) 
   };
 
-  send = async (message: string) => {
+  send = (message: string) => {
     for (const [address, client] of Array.from(this.clients)) {
       try {
-        await client.conn.write(`${message}\n`);
+        client.controller.enqueue(`${message}\n`);
       } catch (error) {
         console.log(`client ${address} disconnected`);
         this.leave(address);
